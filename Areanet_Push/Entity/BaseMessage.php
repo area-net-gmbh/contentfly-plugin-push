@@ -76,6 +76,12 @@ class BaseMessage extends Base
     protected $logs;
 
     /**
+     * @ORM\Column(type="text", nullable=true)
+     * @PIM\Config(label="Sended (iOS)", readonly=true, tab="logs")
+     */
+    protected $logIOSTokens = 0;
+
+    /**
      * @return mixed
      */
     public function getStatusAndroid()
@@ -221,4 +227,34 @@ class BaseMessage extends Base
     }
 
 
+
+    /**
+     * Get the value of logIOSTokens
+     */ 
+    public function getLogIOSTokens()
+    {
+        return $this->logIOSTokens;
+    }
+
+    /**
+     * Set the value of logIOSTokens
+     *
+     * @return  self
+     */ 
+    public function setLogIOSTokens($logIOSTokens)
+    {
+        $this->logIOSTokens = $logIOSTokens;
+
+        return $this;
+    }
+
+    /**
+     * @param string $platform
+     * @param string $message
+     */
+    public function appendLogIOSTokens($token)
+    {
+
+        $this->logIOSTokens = $this->logIOSTokens.','.$token;
+    }
 }

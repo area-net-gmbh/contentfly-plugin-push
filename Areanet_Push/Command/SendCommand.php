@@ -5,6 +5,7 @@ use Areanet\PIM\Classes\Command\CustomCommand;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Entity\Group;
 use Doctrine\ORM\EntityManager;
+use Exception;
 use Plugins\Areanet_Push\Classes\Android;
 use Plugins\Areanet_Push\Classes\Ios;
 use Plugins\Areanet_Push\Entity\BaseMessage;
@@ -77,20 +78,38 @@ class SendCommand extends CustomCommand
             $message->setStatusIos(Message::SENDING);
             $this->em->flush();
 
+            $iosError = 0;
+
+            $sendedTokens = explode(',', $message->getLogIOSTokens());
+            $iosSended    = $message->getSendediOS();
+            $iOSNewSended = 0;
+
             try {
                 $iosPush = new Ios($message->getTitle(), $message->getSubtitle(), $message->getExtendedData());
 
                 $iosTokensToDelete = array();
                 /** @var Token $iosTokenObj */
                 foreach ($iosTokensObj as $iosTokenObj) {
-                    if (!$iosPush->send($iosTokenObj->getToken())) {
+                   
+                    if(in_array($iosTokenObj->getToken(), $sendedTokens)) continue;
+                  
+                    try{
+                        $iosPush->send($iosTokenObj->getToken());
+                        $message->appendLogIOSTokens($iosTokenObj->getToken());
+                        $iOSNewSended++;
+                    }catch(Exception $e){
+                        $iosError++;
                         $iosTokensToDelete[] = $iosTokenObj;
+                        $message->appendLogs(Token::IOS, '[error '.$e->getCode().'] '.$iosTokenObj->getToken().' | '.$e->getMessage());
                     }
+
+                    $this->em->flush();
+                    
                 }
 
                 $iosPush->close();
 
-                $iosSended  = count($iosTokensObj) - count($iosTokensToDelete);
+                $iosSended  = $iosSended + $iOSNewSended;
                 $iosDeleted = count($iosTokensToDelete);
 
                 foreach ($iosTokensToDelete as $iosTokenToDelete) {
@@ -101,7 +120,7 @@ class SendCommand extends CustomCommand
                 $message->setStatusIos(Message::SENDED);
 
 
-                $output->writeln("<info>$iosSended iOS-Notifications sended.</info>");
+                $output->writeln("<info>$iOSNewSended iOS-Notifications sended. $iosError Fehler.</info>");
                 if ($iosDeleted) $output->writeln("<error>$iosDeleted iOS-Tokens deleted.</error>");
 
                 $message->appendLogs(Token::IOS, "$iosSended iOS-Notifications sended.");

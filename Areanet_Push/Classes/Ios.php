@@ -42,6 +42,8 @@ class Ios
         curl_setopt($this->ch, CURLOPT_HTTP_VERSION, 3);
         curl_setopt($this->ch, CURLOPT_HTTPHEADER, $ar_request_head);
         curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, 0);
+        curl_setopt($this->ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER, false);
     }
 
     public function send($token){
@@ -51,15 +53,9 @@ class Ios
 
         curl_exec($this->ch);
         $httpcode = curl_getinfo($this->ch, CURLINFO_HTTP_CODE);
-
-        if(intval($httpcode) == 200){
-            //Message sended
-            return true;
-        }elseif(intval($httpcode) == 400){
-            //Bad device token
-            return false;
-        }else{
-            throw new \Exception('Send to Apple-APNS failed: '.  curl_error($this->ch));
+        
+        if(intval($httpcode) != 200){
+            throw new \Exception(curl_error($this->ch), intval($httpcode));
         }
 
     }
